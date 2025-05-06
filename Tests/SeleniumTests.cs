@@ -11,6 +11,7 @@ public class SeleniumTests
 {
     public required IWebDriver _driver;
     public required SupportFunctions functions;
+    public required WebDriverWait wait;
 
     [TearDown]
     public void TestCleanup()
@@ -22,13 +23,17 @@ public class SeleniumTests
     public void TestInit()
     {
         functions = new SupportFunctions();
-
+        
         ChromeOptions options = new ChromeOptions();
         options.AddArguments("--headless");
-        _driver = new ChromeDriver();
+        _driver = new ChromeDriver(options);
         _driver.Navigate().GoToUrl("https://ecommerce-playground.lambdatest.io/index.php?route=common/home");
         _driver.Manage().Window.Maximize();
         _driver.Manage().Cookies.DeleteAllCookies();
+        wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(10))
+        {
+            PollingInterval = TimeSpan.FromSeconds(2),
+        };
     }
     [Test]
     [Category("Smoke")]
@@ -84,16 +89,20 @@ public class SeleniumTests
 
         var searchInput = _driver.FindElement(By.Name("search"));
         searchInput.SendKeys(searchText);
-        Thread.Sleep(3000);
+        
+
+        wait.Until(element => 
+            _driver.FindElement(By.XPath("//div[contains(@class,'search-input-group')]/div[@class='dropdown']/ul")).Displayed);
 
         var autoCompleteSearch = _driver.FindElements(By.XPath("//div[contains(@class,'search-input-group')]/div[@class='dropdown']/ul[contains(@class,'dropdown-menu')]/li//a/img[@alt='" + searchText + "']"));
+
         if (autoCompleteSearch.Count > 0)
         {
             autoCompleteSearch[0].Click();
         }
         else
         {
-            var searchButton = _driver.FindElement(By.XPath("//button[@class='btn btn-default btn-lg']"));
+            var searchButton = _driver.FindElement(By.XPath("//button[text()='Search']"));
             searchButton.Click();
         }
 
@@ -113,7 +122,8 @@ public class SeleniumTests
 
         var addToCart = _driver.FindElement(By.XPath("//div[@class='entry-row row order-3 no-gutters ']//button[text()='Add to Cart']"));
         addToCart.Click();
-        Thread.Sleep(3000);
+
+        wait.Until(element => _driver.FindElement(By.XPath("//a[normalize-space(.)='View Cart']")).Enabled);
 
         var viewCartButton = _driver.FindElements(By.XPath("//a[normalize-space(.)='View Cart']")).Last();
         viewCartButton.Click();
@@ -162,12 +172,13 @@ public class SeleniumTests
         ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].scrollIntoView(true);", agreeToTerms);
         agreeToTerms.Click();
 
-        Thread.Sleep(2000);
+        wait.Until(element => _driver.FindElement(By.Id("button-save")).Enabled);
+
         var continueButton = _driver.FindElement(By.Id("button-save"));
-        ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].scrollIntoView(true);", continueButton);
+        //((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].scrollIntoView(true);", continueButton);
         continueButton.Click();
 
-        Thread.Sleep(2000);
+        wait.Until(element => _driver.FindElement(By.XPath("//h1[text()='Confirm Order']")).Displayed);
         Assert.That(_driver.Title, Is.EqualTo("Confirm Order"));
 
         var confirmedOrderTotal = _driver.FindElement(By.XPath("//table[@class='table table-bordered table-hover mb-0']/tfoot/tr/td/strong[text()='Total:']//parent::td//following-sibling::td"));
