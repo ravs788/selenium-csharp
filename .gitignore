@@ -1,3 +1,4 @@
 ﻿selenium-tests/bin/
 selenium-tests/obj/
 .vs/
+selenium-tests/*.dll
